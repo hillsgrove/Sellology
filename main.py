@@ -1,49 +1,59 @@
 import streamlit as st
 
-# 1. Page Config
 st.set_page_config(page_title="Sellogy", page_icon="🧠")
 
-# 2. Basic Header (No custom CSS to avoid errors)
 st.title("🧠 Sellogy")
-st.write("Behavioral Pricing Engine for Premium Resale")
+st.write("Target-Based Pricing Engine")
 st.divider()
 
-# 3. Sidebar Financials
-st.sidebar.header("1. Financials")
-cost = st.sidebar.number_input("Item Cost ($)", value=50.0)
-payout = st.sidebar.number_input("Target Payout ($)", value=100.0)
-promo = st.sidebar.slider("Promoted Listing %", 0, 15, 2) / 100
+# --- 1. CLEAR INPUTS ---
+st.sidebar.header("1. YOUR DATA")
+# This is where you enter what you actually paid
+item_cost = st.sidebar.number_input("What did you pay? (COGS)", value=50.0, step=1.0)
+# This is the profit you WANT to put in your pocket
+target_profit = st.sidebar.number_input("Desired Net Profit", value=100.0, step=1.0)
+# Optional marketing fee
+promo_fee_pct = st.sidebar.slider("eBay Promo %", 0, 15, 2) / 100
 
-# Base Math
-raw_price = (payout + cost + 0.40) / (1 - (0.1325 + promo))
+# --- 2. THE MATH (eBay Clothing Standards) ---
+# Total Fees = 13.25% + Promo % + $0.40 fixed
+platform_fee_pct = 0.1325 + promo_fee_pct
 
-# 4. Brand Strategy
+# TO GET YOUR PROFIT: We need to cover Cost + Target + Fixed Fee
+# Price = (Cost + Target + 0.40) / (1 - Fees)
+raw_price = (item_cost + target_profit + 0.40) / (1 - platform_fee_pct)
+
+# --- 3. BRAND STRATEGY ---
 st.header("2. Brand Strategy")
 tier = st.selectbox(
-    "Category",
-    ["Designer (Khaite/Jeanerica)", "Premium (ReDone/Mother)", "Mid-Tier (J.Crew/Madewell)", "Commodity (Nike/Zara)"]
+    "Select Brand Category",
+    ["Designer (Khaite)", "Premium (ReDone)", "Mid-Tier (J.Crew)", "Commodity (Zara)"]
 )
 
-if tier == "Designer (Khaite/Jeanerica)":
+if tier == "Designer (Khaite)":
     final_price = round(raw_price / 10) * 10
-    logic = "PRESTIGE: Round numbers signal luxury and high equity."
-elif tier == "Premium (ReDone/Mother)":
+elif tier == "Premium (ReDone)":
     final_price = round(raw_price / 5) * 5
-    logic = "QUALITY: Clean $5 increments signal boutique value."
-elif tier == "Mid-Tier (J.Crew/Madewell)":
+elif tier == "Mid-Tier (J.Crew)":
     final_price = int(raw_price) + 0.99
-    logic = "CHARM: .99 anchors the price lower for value-seekers."
 else:
     final_price = int(raw_price) + 0.95
-    logic = "CLEARANCE: .95 triggers 'deal' impulses in saturated markets."
 
-# 5. The Results
+# --- 4. THE BREAKDOWN ---
 st.divider()
-c1, c2 = st.columns(2)
-with c1:
-    st.metric("LIST PRICE", f"${final_price:,.2f}")
-with c2:
-    actual_profit = (final_price * (1 - (0.1325 + promo)) - 0.40 - cost)
-    st.metric("NET PROFIT", f"${actual_profit:,.2f}")
+col1, col2, col3 = st.columns(3)
 
-st.info(f"**Psychology Logic:** {logic}")
+# Real-time calculation based on the ROUNDED final price
+ebay_cut = (final_price * platform_fee_pct) + 0.40
+actual_payout = final_price - ebay_cut
+actual_profit = actual_payout - item_cost
+
+with col1:
+    st.metric("LIST AT", f"${final_price:,.2f}")
+with col2:
+    st.metric("EBAY TAKES", f"${ebay_cut:,.2f}")
+with col3:
+    st.metric("YOU KEEP", f"${actual_profit:,.2f}")
+
+# --- 5. THE AUDIT TRAIL ---
+st.info(f"**Audit Trail:** To net **${actual_profit:,.2f}**, you must list at **${final_price:,.2f}** because eBay takes a **{platform_fee_pct*100:.2f}%** cut plus a $0.40 transaction fee.")
